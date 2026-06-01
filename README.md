@@ -6,7 +6,7 @@ Mind-Omni is a brain-to-multimodal generation project built on top of Muddit-sty
 
 - [x] Training code
 - [x] Inference code
-- [ ] Dataset release (planned within 2 weeks)
+- [x] Dataset release (initial ModelScope upload completed)
 - [ ] Evaluation code release (planned within 2 weeks)
 
 ## Overview
@@ -44,6 +44,127 @@ Most training scripts assume:
 - A multi-GPU environment for stage-1 and stage-2 training
 - Local access to the required NSD-derived fMRI, image, and text assets
 
+## Dataset
+
+The initial NSD-derived dataset upload has been completed and is available on ModelScope:
+
+- Dataset repo: `https://www.modelscope.cn/datasets/LLLLLYYYYYzzz/NSD`
+
+To satisfy ModelScope file-count limits, the public release is packaged as a small number of tar archives instead of millions of loose files.
+
+### Released archive layout
+
+```text
+NSD/
+|-- README.md
+|-- COCO_IDs.tar
+|-- COCO_captions_recapted_Qw2VL.tar
+|-- NSD_fMRI_MNI_multi.tar
+|-- NSD_fMRI_MNI_single.tar
+|-- NSD_features.tar
+|-- NSD_imgs.tar
+|-- Visual_instruct_tuning_data.tar
+|-- nsddata.tar
+|-- root_files.tar
+`-- short_COCO_caption.tar
+```
+
+### Logical dataset layout after extraction
+
+```text
+NSD_complete/
+|-- COCO_73k_annots_curated.npy
+|-- COCO_IDs/
+|-- COCO_captions_recapted_Qw2VL/
+|-- NSD_fMRI_MNI_multi/
+|-- NSD_fMRI_MNI_single/
+|-- NSD_features/
+|   |-- CLIP_H_text_max30/
+|   |-- CLIP_feature_1024/
+|   |-- CLIP_feature_Base/
+|   |-- VAVAE_feature/
+|   |-- VQVAE_continuos_feature/
+|   |-- VQVAE_feature_img/
+|   `-- caption_ids_COCO_recaption/
+|-- NSD_imgs/
+|-- Visual_instruct_tuning_data/
+|   |-- raw_data/
+|   `-- recaptioned_data/
+|-- brain2caption_qwen.json
+|-- nsddata/
+|-- raw_COCO.json
+|-- raw_COCO_with_idx.json
+|-- short_COCO_caption/
+|-- val_stim_multi_trial_data.npy
+`-- 数据集说明.txt
+```
+
+### Key directories
+
+- `NSD_fMRI_MNI_single/`: single-trial fMRI arrays for each subject
+- `NSD_fMRI_MNI_multi/`: multi-trial / test-time fMRI arrays and image index files
+- `NSD_features/VQVAE_feature_img/`: image token IDs
+- `NSD_features/caption_ids_COCO_recaption/`: text token IDs
+- `NSD_features/CLIP_feature_1024/`: CLIP image and text features
+- `NSD_features/CLIP_H_text_max30/`: CLIP text hidden states
+- `NSD_imgs/`: image files referenced by NSD image indices
+- `COCO_captions_recapted_Qw2VL/`: recaptioned text annotations
+- `Visual_instruct_tuning_data/recaptioned_data/`: stage-2 short VQA, detailed caption, and easy reasoning data
+- `short_COCO_caption/`: short caption data and token IDs
+- `COCO_IDs/`: COCO ID mapping files
+- `nsddata/`: NSD anatomical / ROI / registration assets
+
+### Download and extraction
+
+Method 1: `git lfs`
+
+```bash
+git lfs install
+git clone https://www.modelscope.cn/datasets/LLLLLYYYYYzzz/NSD.git
+cd NSD
+
+mkdir -p NSD_complete
+for f in *.tar; do
+  tar -xf "$f" -C NSD_complete
+done
+```
+
+Method 2: ModelScope CLI
+
+```bash
+pip install -U modelscope
+modelscope download --dataset LLLLLYYYYYzzz/NSD --local_dir ./NSD-modelscope
+cd NSD-modelscope
+
+mkdir -p NSD_complete
+for f in *.tar; do
+  tar -xf "$f" -C NSD_complete
+done
+```
+
+After extraction, set your dataset root:
+
+```bash
+export NSD_DATA_ROOT=/path/to/NSD_complete
+```
+
+### Using the dataset with this repository
+
+Many training and validation scripts still contain hardcoded dataset paths from the internal environment. Before running any stage, locate and replace them with your own `NSD_DATA_ROOT`.
+
+```bash
+rg -n '/nfs/diskstation/DataStation/public_dataset/NSD_complete|/data/home/luyizhuo/Datastation_lyz/Datasets/NSD_complete' \
+  train_decoder_for_perception \
+  train_fMRI_tokenizer_perceptual \
+  train_stage1 \
+  train_stage1_2 \
+  train_stage2_short_VQA \
+  Validate_the_models \
+  data_processing
+```
+
+For an agent-oriented runbook that explains the dataset directories and the path-replacement workflow, see `skills/nsd-dataset-usage/SKILL.md`.
+
 ## Data and Checkpoints
 
 The current codebase uses absolute paths inside the provided shell scripts and validation files. Before running any stage, update those paths to match your local environment.
@@ -56,7 +177,7 @@ At a high level, the pipeline expects the following assets:
 - Muddit base model components: transformer config, transformer weights, tokenizer, text encoder, VQ-VAE, and scheduler
 - Trained checkpoints from earlier stages when launching later stages
 
-Dataset release is planned within 2 weeks. Until then, the included scripts should be treated as reference implementations for reproducing the pipeline on internally prepared data layouts.
+The released dataset packaging is described above. The included scripts should still be treated as reference implementations because many of them require local path edits before use.
 
 ## Repository Layout
 
