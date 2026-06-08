@@ -7,7 +7,7 @@ Mind-Omni is a brain-to-multimodal generation project built on top of Muddit-sty
 - [x] Training code
 - [x] Inference code
 - [x] Dataset release (initial ModelScope upload completed)
-- [ ] Evaluation code release (planned within 2 weeks)
+- [ ] Evaluation code and ckpt release (planned within 2 weeks)
 
 ## Overview
 
