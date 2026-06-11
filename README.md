@@ -1,32 +1,19 @@
 # Mind-Omni
 
-Mind-Omni is a brain-to-multimodal generation project built on top of Muddit-style masked diffusion modeling. This repository contains the currently released training and inference code for the full pipeline, including perceptual decoding, fMRI tokenization, joint brain-image-text modeling, and stage-2 VQA-style instruction tuning.
+Mind-Omni is a unified brain-vision-language framework built on top of Muddit-style masked diffusion modeling. This repository contains the released training and inference code for perceptual decoding, fMRI tokenization, joint brain-image-text modeling, and stage-2 instruction tuning.
+
+If you are using Codex skills or an agent workflow, start with:
+
+- [`skills/muddit-runbook/SKILL.md`](skills/muddit-runbook/SKILL.md) for the full stage-by-stage runbook
+- [`skills/nsd-dataset-usage/SKILL.md`](skills/nsd-dataset-usage/SKILL.md) for dataset layout, path replacement, and launch preparation
 
 ## TODO
 
 - [x] Training code
 - [x] Inference code
-- [x] Dataset release (initial ModelScope upload completed)
-- [ ] Evaluation code and ckpt release (planned within 2 weeks)
-
-## Overview
-
-The repository is organized as a multi-stage pipeline:
-
-1. `train_decoder_for_perception/`
-   Train a perceptual decoder that predicts CLIP-aligned image and text features from fMRI.
-2. `train_fMRI_tokenizer_perceptual/`
-   Train the fMRI tokenizer that converts brain signals into discrete brain tokens.
-3. `train_stage1/`
-   Jointly train brain, image, and text alignment for bidirectional brain-to-multimodal generation.
-4. `train_stage1_2/`
-   Continue stage-1 training with the finalized tokenizer setting and the 64-token brain representation.
-5. `train_stage2_short_VQA/`
-   Instruction-tune the model for short VQA, detailed captioning, and easy reasoning.
-6. `data_processing/`
-   Dataset preprocessing utilities for stage-1 and stage-2 training.
-7. `Validate_the_models/`
-   Internal validation and analysis scripts.
+- [x] Dataset release
+- [x] Checkpoint release
+- [ ] Evaluation code release
 
 ## Setup
 
@@ -38,38 +25,50 @@ cd Mind-Omni
 pip install -r requirements.txt
 ```
 
-Most training scripts assume:
+Environment notes:
 
-- Python with PyTorch, `diffusers`, `transformers`, `accelerate`, and `bitsandbytes`
-- A multi-GPU environment for stage-1 and stage-2 training
-- Local access to the required NSD-derived fMRI, image, and text assets
+- Python + PyTorch with `diffusers`, `transformers`, `accelerate`, and `bitsandbytes`
+- At least 2 A100 GPUs are required for the full training pipeline
+- The released stage-1, stage-1.2, and stage-2 launchers were configured with multi-GPU `accelerate` runs and were originally launched on 4 GPUs
+- Many scripts still contain machine-specific absolute paths, so update dataset and checkpoint roots before running
 
 ## Dataset
 
-The initial NSD-derived dataset upload has been completed and is available on ModelScope:
+The public dataset release is available on ModelScope:
 
 - Dataset repo: `https://www.modelscope.cn/datasets/LLLLLYYYYYzzz/NSD`
 
-To satisfy ModelScope file-count limits, the public release is packaged as a small number of tar archives instead of millions of loose files.
+To satisfy ModelScope file-count limits, the dataset is packaged as tar archives rather than millions of loose files.
 
-### Released archive layout
+### Download
 
-```text
-NSD/
-|-- README.md
-|-- COCO_IDs.tar
-|-- COCO_captions_recapted_Qw2VL.tar
-|-- NSD_fMRI_MNI_multi.tar
-|-- NSD_fMRI_MNI_single.tar
-|-- NSD_features.tar
-|-- NSD_imgs.tar
-|-- Visual_instruct_tuning_data.tar
-|-- nsddata.tar
-|-- root_files.tar
-`-- short_COCO_caption.tar
+Method 1: `git lfs`
+
+```bash
+git lfs install
+git clone https://www.modelscope.cn/datasets/LLLLLYYYYYzzz/NSD.git
+cd NSD
+
+mkdir -p NSD_complete
+for f in *.tar; do
+  tar -xf "$f" -C NSD_complete
+done
 ```
 
-### Logical dataset layout after extraction
+Method 2: ModelScope CLI
+
+```bash
+pip install -U modelscope
+modelscope download --dataset LLLLLYYYYYzzz/NSD --local_dir ./NSD-modelscope
+cd NSD-modelscope
+
+mkdir -p NSD_complete
+for f in *.tar; do
+  tar -xf "$f" -C NSD_complete
+done
+```
+
+### Dataset layout after extraction
 
 ```text
 NSD_complete/
@@ -99,60 +98,11 @@ NSD_complete/
 `-- 数据集说明.txt
 ```
 
-### Key directories
-
-- `NSD_fMRI_MNI_single/`: single-trial fMRI arrays for each subject
-- `NSD_fMRI_MNI_multi/`: multi-trial / test-time fMRI arrays and image index files
-- `NSD_features/VQVAE_feature_img/`: image token IDs
-- `NSD_features/caption_ids_COCO_recaption/`: text token IDs
-- `NSD_features/CLIP_feature_1024/`: CLIP image and text features
-- `NSD_features/CLIP_H_text_max30/`: CLIP text hidden states
-- `NSD_imgs/`: image files referenced by NSD image indices
-- `COCO_captions_recapted_Qw2VL/`: recaptioned text annotations
-- `Visual_instruct_tuning_data/recaptioned_data/`: stage-2 short VQA, detailed caption, and easy reasoning data
-- `short_COCO_caption/`: short caption data and token IDs
-- `COCO_IDs/`: COCO ID mapping files
-- `nsddata/`: NSD anatomical / ROI / registration assets
-
-### Download and extraction
-
-Method 1: `git lfs`
-
-```bash
-git lfs install
-git clone https://www.modelscope.cn/datasets/LLLLLYYYYYzzz/NSD.git
-cd NSD
-
-mkdir -p NSD_complete
-for f in *.tar; do
-  tar -xf "$f" -C NSD_complete
-done
-```
-
-Method 2: ModelScope CLI
-
-```bash
-pip install -U modelscope
-modelscope download --dataset LLLLLYYYYYzzz/NSD --local_dir ./NSD-modelscope
-cd NSD-modelscope
-
-mkdir -p NSD_complete
-for f in *.tar; do
-  tar -xf "$f" -C NSD_complete
-done
-```
-
-After extraction, set your dataset root:
+Before running any stage, replace hardcoded dataset paths with your local root:
 
 ```bash
 export NSD_DATA_ROOT=/path/to/NSD_complete
-```
 
-### Using the dataset with this repository
-
-Many training and validation scripts still contain hardcoded dataset paths from the internal environment. Before running any stage, locate and replace them with your own `NSD_DATA_ROOT`.
-
-```bash
 rg -n '/nfs/diskstation/DataStation/public_dataset/NSD_complete|/data/home/luyizhuo/Datastation_lyz/Datasets/NSD_complete' \
   train_decoder_for_perception \
   train_fMRI_tokenizer_perceptual \
@@ -163,205 +113,160 @@ rg -n '/nfs/diskstation/DataStation/public_dataset/NSD_complete|/data/home/luyiz
   data_processing
 ```
 
-For an agent-oriented runbook that explains the dataset directories and the path-replacement workflow, see `skills/nsd-dataset-usage/SKILL.md`.
+## Checkpoints
 
-## Data and Checkpoints
+The public checkpoint release is available on ModelScope:
 
-The current codebase uses absolute paths inside the provided shell scripts and validation files. Before running any stage, update those paths to match your local environment.
+- Checkpoint repo: `https://www.modelscope.cn/models/LLLLLYYYYYzzz/Mind_Omni_V1_ckpt/files`
 
-At a high level, the pipeline expects the following assets:
+### Download
 
-- fMRI single-trial and multi-trial arrays
-- Image token IDs and text token IDs
-- CLIP image/text features and text hidden states
-- Muddit base model components: transformer config, transformer weights, tokenizer, text encoder, VQ-VAE, and scheduler
-- Trained checkpoints from earlier stages when launching later stages
+Method 1: ModelScope SDK
 
-The released dataset packaging is described above. The included scripts should still be treated as reference implementations because many of them require local path edits before use.
+```bash
+pip install -U modelscope
+```
 
-## Repository Layout
+```python
+from modelscope import snapshot_download
+
+ckpt_dir = snapshot_download("LLLLLYYYYYzzz/Mind_Omni_V1_ckpt")
+```
+
+Method 2: Git
+
+```bash
+git clone https://www.modelscope.cn/LLLLLYYYYYzzz/Mind_Omni_V1_ckpt.git
+```
+
+### Checkpoint layout
+
+The released weights are organized as follows:
 
 ```text
-Mind-Omni/
-|-- MindOmni_src/                       # Stage-1 transformer and pipeline
-|-- MindOmni_src_stage2/                # Stage-2 transformer and pipeline
-|-- MindOmni_utils/                     # Shared training and scheduler utilities
-|-- data_processing/                    # Dataset preparation scripts
-|-- train_decoder_for_perception/       # Stage 0
-|-- train_fMRI_tokenizer_perceptual/    # Stage 0.5
-|-- train_stage1/                       # Stage 1
-|-- train_stage1_2/                     # Stage 1.2
-|-- train_stage2_short_VQA/             # Stage 2
-`-- Validate_the_models/                # Validation and analysis scripts
+Mind-Omni-weights/
+`-- Models/
+    |-- Muddit/
+    |   |-- 1024/
+    |   |   `-- mask_token_embedding.pth
+    |   |-- 512/
+    |   |   `-- transformer/
+    |   |       |-- config.json
+    |   |       `-- diffusion_pytorch_model.safetensors
+    |   |-- scheduler/
+    |   |   |-- scheduler.py
+    |   |   `-- scheduler_config.json
+    |   |-- text_encoder/
+    |   |   |-- config.json
+    |   |   |-- model.fp16.safetensors
+    |   |   `-- model.safetensors
+    |   |-- tokenizer/
+    |   |   |-- merges.txt
+    |   |   |-- special_tokens_map.json
+    |   |   |-- tokenizer_config.json
+    |   |   `-- vocab.json
+    |   `-- vqvae/
+    |       |-- config.json
+    |       |-- diffusion_pytorch_model.fp16.safetensors
+    |       `-- diffusion_pytorch_model.safetensors
+    `-- UniBrain/
+        |-- fMRI_perceptron/
+        |   `-- coarse_and_fine/
+        |       `-- checkpoint_epoch_40.pth
+        |-- fMRI_tokenizer/
+        |   `-- train_with_semantic_perceptual/
+        |       `-- token_concat_codebook_size_128_code_dim_16_num_token_64/
+        |           `-- checkpoint-14000/
+        |               `-- VQ_fMRI/
+        |-- train_stage1_2/
+        |   |-- checkpoint-24000/
+        |   |   |-- config.json
+        |   |   `-- pytorch_model.bin
+        |   `-- fmri_mask_embedding.pt
+        |-- train_stage1_with_encoding/
+        |   |-- checkpoint-16500/
+        |   |   |-- config.json
+        |   |   `-- pytorch_model.bin
+        |   `-- fmri_mask_embedding.pt
+        `-- train_stage2_shortVQA/
+            |-- easy_reasoning/
+            |   `-- checkpoint-1800/
+            |       |-- config.json
+            |       |-- lora_config.json
+            |       `-- pytorch_model.bin
+            `-- short_detail/
+                `-- checkpoint-1200/
+                    |-- config.json
+                    |-- lora_config.json
+                    `-- pytorch_model.bin
 ```
+
+For later stages, point your shell scripts to these released checkpoints instead of the original internal paths.
 
 ## Training
 
-Run all commands from the repository root.
+Run all commands from the repository root after updating the dataset root and checkpoint root in the corresponding `.sh` files.
 
-### Stage 0: Perceptual Decoder
-
-Train the perceptual decoder:
+### Stage 0: Perceptual decoder
 
 ```bash
 bash train_decoder_for_perception/train_recons_perceptual.sh
 ```
 
-Main entrypoints:
-
-- Launcher: `train_decoder_for_perception/train_recons_perceptual.sh`
-- Trainer: `train_decoder_for_perception/train_recons_perceptual.py`
-- Model: `train_decoder_for_perception/fMRI_recons_perceptual.py`
-
-### Stage 0.5: fMRI Tokenizer
-
-Train the tokenizer that maps fMRI to discrete brain tokens:
+### Stage 0.5: fMRI tokenizer
 
 ```bash
 bash train_fMRI_tokenizer_perceptual/train_tokenizer_perceptual.sh
 ```
 
-Main entrypoints:
-
-- Launcher: `train_fMRI_tokenizer_perceptual/train_tokenizer_perceptual.sh`
-- Trainer: `train_fMRI_tokenizer_perceptual/train_tokenizer_perceptual.py`
-- Model: `train_fMRI_tokenizer_perceptual/fMRI_tokenizer_perceptual.py`
-
-### Stage 1: Joint Brain-Image-Text Modeling
-
-Train the first joint multimodal stage:
+### Stage 1: Joint brain-image-text modeling
 
 ```bash
 bash train_stage1/train_stage1.sh
 ```
 
-Main entrypoints:
-
-- Launcher: `train_stage1/train_stage1.sh`
-- Trainer: `train_stage1/train_mind_omni_stage1.py`
-- Validation / inference example: `train_stage1/validate_stage1.py`
-
-### Stage 1.2: Continued Joint Training
-
-Continue training with the 64-token brain setup:
+### Stage 1.2: Continued joint training with 64 brain tokens
 
 ```bash
 bash train_stage1_2/train_stage1_2.sh
 ```
 
-Main entrypoints:
-
-- Launcher: `train_stage1_2/train_stage1_2.sh`
-- Trainer: `train_stage1_2/train_mind_omni_stage1_2.py`
-- Validation / inference example: `train_stage1_2/validate_stage1_2.py`
-
-### Stage 2: Short VQA and Instruction Tuning
-
-Train the stage-2 model with short VQA, detailed captioning, and easy reasoning data:
+### Stage 2: Short VQA, detailed captioning, and easy reasoning
 
 ```bash
 bash train_stage2_short_VQA/train_stage2_shortVQA.sh
 ```
 
-Main entrypoints:
+Before launching stage 2, replace the default warm-start paths in `train_stage2_short_VQA/train_stage2_shortVQA.sh` with the released stage-1.2 checkpoint:
 
-- Launcher: `train_stage2_short_VQA/train_stage2_shortVQA.sh`
-- Trainer: `train_stage2_short_VQA/train_stage2_shortVQA.py`
-- Validation / inference example: `train_stage2_short_VQA/validate_stage2_shortVQA.py`
-
-## Inference
-
-### Stage 0: Perceptual Decoder Inference
-
-Minimal usage:
-
-```python
-import torch
-from train_decoder_for_perception.fMRI_recons_perceptual import fMRI_recons_perceptron
-
-ckpt = torch.load("path/to/checkpoint_epoch_xx.pth", map_location="cpu")
-model = fMRI_recons_perceptron(
-    input_dim=16127,
-    output_dim1=1024,
-    output_dim2=29 * 1024,
-    hidden_dims=[4096, 4096, 4096, 4096],
-)
-model.load_state_dict(ckpt["model_state_dict"], strict=True)
-model.eval()
-
-pred_img_feat, pred_txt_hidden = model(fmri_tensor)
+```bash
+PRETRAINED_STAGE2_MODEL_ROOT=/path/to/Mind-Omni-weights/Models/UniBrain/train_stage1_2/checkpoint-24000
+FMRI_MASK_TOKEN_PATH=/path/to/Mind-Omni-weights/Models/UniBrain/train_stage1_2/fmri_mask_embedding.pt
 ```
 
-### Stage 0.5: fMRI Tokenizer Inference
+## Inference and Evaluation
 
-Minimal usage:
-
-```python
-from train_fMRI_tokenizer_perceptual.fMRI_tokenizer_perceptual import VQ_fMRI
-
-brain_vae = VQ_fMRI.from_pretrained("path/to/VQ_fMRI")
-brain_vae.eval()
-
-quantized_tokens, codebook_indices = brain_vae.forward_for_inference(fmri_tensor)
-recons_pcc = brain_vae.calculate_pcc(fmri_tensor)
-```
-
-### Stage 1: Brain-to-Image and Brain-to-Text Inference
-
-The repository already includes an end-to-end inference example:
+Current reference inference entrypoints:
 
 ```bash
 python train_stage1/validate_stage1.py
-```
-
-This script shows how to:
-
-- Load the tokenizer, text encoder, VQ-VAE, scheduler, and stage-1 transformer
-- Build `UnifiedPipeline`
-- Generate images and texts from fMRI inputs
-
-### Stage 1.2: Batch Inference on Test Splits
-
-Use the provided validation script:
-
-```bash
 python train_stage1_2/validate_stage1_2.py
-```
-
-This script performs batched multimodal decoding from brain signals and saves generated images and texts.
-
-### Stage 2: Short VQA / Caption / Reasoning Inference
-
-Use the provided validation script:
-
-```bash
 python train_stage2_short_VQA/validate_stage2_shortVQA.py
 ```
 
-This script demonstrates:
+Notes:
 
-- Loading a stage-2 checkpoint
-- Restoring LoRA adapters when needed
-- Building the stage-2 `UnifiedPipeline`
-- Running brain-conditioned generation for VQA-style outputs
-
-## Data Processing
-
-Preprocessing utilities are included under `data_processing/`.
-
-- `data_processing/stage1_feature_prep/`
-  Scripts for image/text tokenization, feature extraction, and recaption preparation
-- `data_processing/stage2_dataset_prep/`
-  Scripts for matching, cleaning, recaptioning, and tokenizing stage-2 instruction data
-
-These scripts reflect the internal data preparation workflow used by the released training code.
-
-## Notes
-
-- Many scripts currently contain machine-specific absolute paths and should be edited before use.
-- Later stages depend on checkpoints produced by earlier stages.
-- Validation and analysis scripts are available in `Validate_the_models/`, while a cleaned public evaluation release is planned within 2 weeks.
+- These validation scripts are still hardcoded examples and should be edited to match your local dataset and checkpoint paths before use
+- Stage-0 and tokenizer inference can be reproduced by loading the released checkpoints under `Mind-Omni-weights/Models/UniBrain/` with the modules in `train_decoder_for_perception/` and `train_fMRI_tokenizer_perceptual/`
+- Public evaluation code is still being cleaned and will be released later; it remains tracked in the TODO section above
 
 ## Citation
 
-If you find this repository useful, please cite the corresponding project or paper once the public release information is available.
+```bibtex
+@article{lu2026mind,
+  title={Mind-Omni: A Unified Multi-Task Framework for Brain-Vision-Language Modeling via Discrete Diffusion},
+  author={Lu, Yizhuo and Du, Changde and Shi, Qingyu and Chen, Hang and Peng, Jie and Jiang, Liuyun and Zhao, Shuangchen and He, Huiguang},
+  journal={arXiv preprint arXiv:2605.29591},
+  year={2026}
+}
+```
