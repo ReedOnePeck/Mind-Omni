@@ -1,5 +1,15 @@
 # Mind-Omni
 
+<p align="center">
+  <img src="https://img.shields.io/badge/ICML%202026-Spotlight-success?style=for-the-badge" alt="ICML 2026 Spotlight" />
+</p>
+
+<p align="center"><strong>Our paper has been accepted to ICML 2026 as a Spotlight presentation.</strong></p>
+
+<p align="center">
+  <a href="https://arxiv.org/pdf/2605.29591">Paper</a>
+</p>
+
 Mind-Omni is a unified brain-vision-language framework built on top of Muddit-style masked diffusion modeling. This repository contains the released training and inference code for perceptual decoding, fMRI tokenization, joint brain-image-text modeling, and stage-2 instruction tuning.
 
 If you are using Codex skills or an agent workflow, start with:
