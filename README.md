@@ -6,6 +6,7 @@ If you are using Codex skills or an agent workflow, start with:
 
 - [`skills/muddit-runbook/SKILL.md`](skills/muddit-runbook/SKILL.md) for the full stage-by-stage runbook
 - [`skills/nsd-dataset-usage/SKILL.md`](skills/nsd-dataset-usage/SKILL.md) for dataset layout, path replacement, and launch preparation
+- [`skills/ckpt-path-usage/SKILL.md`](skills/ckpt-path-usage/SKILL.md) for replacing local checkpoint roots with the released ModelScope weights
 
 ## TODO
 
@@ -30,7 +31,7 @@ Environment notes:
 - Python + PyTorch with `diffusers`, `transformers`, `accelerate`, and `bitsandbytes`
 - At least 2 A100 GPUs are required for the full training pipeline
 - The released stage-1, stage-1.2, and stage-2 launchers were configured with multi-GPU `accelerate` runs and were originally launched on 4 GPUs
-- Many scripts still contain machine-specific absolute paths, so update dataset and checkpoint roots before running
+- Before running, set your local dataset root and checkpoint root in the launch or validation files you plan to use
 
 ## Dataset
 
@@ -98,7 +99,7 @@ NSD_complete/
 `-- 数据集说明.txt
 ```
 
-Before running any stage, replace hardcoded dataset paths with your local root:
+Before running any stage, set the dataset root to your local `NSD_complete` path:
 
 ```bash
 export NSD_DATA_ROOT=/path/to/NSD_complete
@@ -201,7 +202,7 @@ Mind-Omni-weights/
                     `-- pytorch_model.bin
 ```
 
-For later stages, point your shell scripts to these released checkpoints instead of the original internal paths.
+For later stages, point your shell scripts to these released checkpoints under your local `Mind-Omni-weights` root.
 
 ## Training
 
@@ -256,8 +257,9 @@ python train_stage2_short_VQA/validate_stage2_shortVQA.py
 
 Notes:
 
-- These validation scripts are still hardcoded examples and should be edited to match your local dataset and checkpoint paths before use
+- These validation scripts are reference entrypoints. Set their dataset root, checkpoint root, and output location before running
 - Stage-0 and tokenizer inference can be reproduced by loading the released checkpoints under `Mind-Omni-weights/Models/UniBrain/` with the modules in `train_decoder_for_perception/` and `train_fMRI_tokenizer_perceptual/`
+- For image reconstruction, you can further feed the decoded initial image together with the generated caption into SDXL or Versatile Diffusion to obtain sharper and more visually appealing images
 - Public evaluation code is still being cleaned and will be released later; it remains tracked in the TODO section above
 
 ## Citation
